@@ -112,7 +112,7 @@ module Cms
       if options.has_key?(:path)
         section_for_path = Section.find_by_path(options[:path])
         raise "Could not find section for path '#{options[:path]}'" unless section_for_path
-        ancestors = section_for_path.ancestors(:include_self => true)
+        ancestors = [section_for_path]
       else
         ancestors = selected_page.ancestors
       end
