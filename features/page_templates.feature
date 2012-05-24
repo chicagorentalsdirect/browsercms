@@ -2,8 +2,7 @@ Feature: Page Templates
   CMS Administrators should be able to create page and partial templates through the UI.
 
   Background:
-    Given the cms database is populated
-    And I am logged in as a Content Editor
+    Given I am logged in as a Content Editor
 
   Scenario: Add a Page Template
     When I am at /cms/page_templates
@@ -47,3 +46,4 @@ Feature: Page Templates
     Then the response should be 200
     And the page header should be "List Page Templates"
     And I should not see the "hello" template in the table
+

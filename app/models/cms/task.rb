@@ -1,11 +1,15 @@
 module Cms
   class Task < ActiveRecord::Base
+
     CANT_ASSIGN_MESSAGE = "must have permission to assign tasks"
     CANT_BE_ASSIGNED_MESSAGE = "must have permission to be assigned tasks"
     include Cms::DomainSupport
     belongs_to :assigned_by, :class_name => 'Cms::User'
     belongs_to :assigned_to, :class_name => 'Cms::User'
     belongs_to :page, :class_name => 'Cms::Page'
+
+    include DefaultAccessible
+    attr_accessible :assigned_by, :assigned_to, :page
 
     after_create :mark_other_tasks_for_the_same_page_as_complete
     after_create :send_email
@@ -45,7 +49,7 @@ module Cms
       elsif assigned_to.email.blank?
         logger.warn "Can't send email for task because assigned to user #{assigned_to.login}:#{assigned_to.id} has no email address"
       else
-        domain = SITE_DOMAIN
+        domain = Rails.configuration.cms.site_domain
         if domain =~ /^www/
           host = domain.sub(/^www\./, "#{cms_domain_prefix}.")
         else

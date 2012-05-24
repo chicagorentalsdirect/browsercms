@@ -16,6 +16,8 @@ class Cms::Page < ActiveRecord::Base
   has_many :page_routes, :class_name => 'Cms::PageRoute'
   has_many :tasks
 
+  include Cms::DefaultAccessible
+
   scope :named, lambda { |name| {:conditions => ["#{table_name}.name = ?", name]} }
   scope :with_path, lambda { |path| {:conditions => ["#{table_name}.path = ?", path]} }
 
@@ -80,6 +82,7 @@ class Cms::Page < ActiveRecord::Base
   validates_uniqueness_of :path, :scope=>:deleted
   validate :path_not_reserved
 
+  # Implements Versioning Callback.
   def after_build_new_version(new_version)
     copy_connectors(
         :from_version_number => @copy_connectors_from_version || (new_version.version - 1),
@@ -239,8 +242,16 @@ class Cms::Page < ActiveRecord::Base
     end
   end
 
-  def layout
-    template_file_name && "templates/#{template_file_name.split('.').first}"
+  # Return the layout used to render this page. Will be something like: 'templates/subpage'
+  # @param [Symbol] version Valid values are :full and :mobile.
+  def layout(version = :full)
+    folder = (version == :mobile) ? "mobile" : "templates"
+    template_file_name && "#{folder}/#{layout_name}"
+  end
+
+  # Return the file name of the template
+  def layout_name
+    template_file_name.split('.').first
   end
 
   # This will be nil if it is a file system based template
@@ -303,7 +314,7 @@ class Cms::Page < ActiveRecord::Base
     # Cache the results of this since many projects will call it repeatly on current_page in menus.
     return @top_level_section if @top_level_section
     a = ancestors
-    @top_level_section = (a.size > 0 && a[1]) ? a[1] : Section.root.first
+    @top_level_section = (a.size > 0 && a[1]) ? a[1] : Cms::Section.root.first
   end
 
   def current_task

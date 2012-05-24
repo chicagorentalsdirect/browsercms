@@ -6,27 +6,36 @@ Gem::Specification.new do |s|
   s.version = Cms::VERSION
 
   s.authors = ["BrowserMedia"]
-  s.summary = %q{BrowserCMS is a a general purpose, open source Web Content Management System (CMS), written using Ruby on Rails.}
-  s.description = %q{Web Content Management in Rails.}
+  s.homepage = "http://www.browsercms.org"
+  s.summary = %q{Web Content Management in Rails}
+  s.description = %q{BrowserCMS is a a general purpose, open source Web Content Management System (CMS), written using Ruby on Rails.}
   s.email = %q{github@browsermedia.com}
   s.extra_rdoc_files = %w{
       LICENSE.txt
+      COPYRIGHT.txt
+      GPL.txt
       README.markdown
   }
   s.required_ruby_version = '>= 1.9.2'
 
-  s.files         = `git ls-files`.split("\n")
-  s.files         -= Dir["test/dummy/*"]
-  s.files -= Dir["lib/tasks/cucumber.rake"]
-  s.files -= Dir["lib/tasks/cms.rake"]
-  s.files -= Dir["lib/tasks/core_tasks.rake"]
-  s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
-  s.executables   = `git ls-files -- bin/*`.split("\n").map{ |f| File.basename(f) }
+  s.files = Dir["{app,bin,db,doc,lib,vendor}/**/*"]
+  s.files += Dir[".yardopts"]
+  s.files += Dir["config/routes.rb"]
+  s.files -= Dir["lib/tasks/**/*"]
+  s.files += Dir["lib/tasks/cms.rake"]
 
-  s.add_dependency "rails", "~> 3.1.0 "
+  # Test files are not used and throwing 'Gem::Package::TooLongFileName' errors during packaging, so we are going to skip for now.
+  #s.test_files = Dir["test/**/*"]
+  #s.files -= Dir["test/dummy/*"]
+
+  s.executables = ["bcms", "bcms-upgrade","browsercms"]
+
+  s.add_dependency "rails", "~> 3.2.0 "
+  s.add_dependency "sass-rails"
   s.add_dependency "ancestry", "~> 1.2.4"
   s.add_dependency "ckeditor_rails", "~> 3.6.2.2"
-  s.add_dependency "jquery-rails", "~> 1.0.14"
+  s.add_dependency "jquery-rails", "~> 2.0"
+  s.add_dependency("paperclip", "~> 3.0.3")
 
   # Required only for bcms-upgrade
   s.add_dependency "term-ansicolor"

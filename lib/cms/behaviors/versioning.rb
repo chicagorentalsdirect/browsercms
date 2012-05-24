@@ -1,6 +1,48 @@
 module Cms
+
+  class IgnoreSanitizer
+
+    # Skip sanitizing attributes from mass assignment. This should be used sparingly, since it bypasses security.
+    # Ideally used for dynamically created classes (like ::Version or ::Attribute) where the attributes are not known at
+    # design time.
+    def sanitize(attributes, authorizer)
+      attributes
+    end
+  end
+
   module Behaviors
 
+    # Represents a record as of a specific version in the versions table.
+    module VersionRecord
+
+      # Create an original 'record' of the Versioned about as it existed as of this VersionRecord.
+      #
+      # @return [Object] i.e. HtmlBlock
+      def build_object_from_version()
+        obj = versioned_class.new
+
+        (versioned_class.versioned_columns + [:version, :created_at, :created_by_id, :updated_at, :updated_by_id]).each do |a|
+          obj.send("#{a}=", self.send(a))
+        end
+        obj.id = original_record_id
+
+        #obj.lock_version = lock_version
+
+        # Need to do this so associations can be loaded
+        obj.instance_variable_set("@persisted", true)
+        obj.instance_variable_set("@new_record", false)
+
+        # Callback to allow us to load other data when an older version is loaded
+        obj.after_as_of_version if obj.respond_to?(:after_as_of_version)
+
+        # Last but not least, clear the changed attributes
+        if changed_attrs = obj.send(:changed_attributes)
+          changed_attrs.clear
+        end
+
+        obj
+      end
+    end
     # This behavior adds Versioning to an ActiveRecord object. It seriously monkeys with how objects are saved or updated.
     #
     # This implementation is pretty tied to Rails 3 ActiveRecord. Here's how I understand it works:
@@ -44,14 +86,17 @@ module Cms
           before_validation :initialize_version
           before_save :build_new_version
           attr_accessor :skip_callbacks
-
-          attr_accessor :revert_to_version
+          attr_accessible :version_comment
 
           #Define the version class
+          #puts "is_version called for #{self}"
           const_set("Version", Class.new(ActiveRecord::Base)).class_eval do
             class << self;
               attr_accessor :versioned_class
             end
+
+            include VersionRecord
+            self.mass_assignment_sanitizer = Cms::IgnoreSanitizer.new
 
             def versioned_class
               self.class.versioned_class
@@ -126,6 +171,7 @@ module Cms
 
           attrs[:version_comment] = @version_comment || default_version_comment
           @version_comment = nil
+          #puts "Im a '#{self.class}', vc = #{self.class.version_class}"
           new_version = versions.build(attrs)
           new_version.version = new_record? ? 1 : (draft.version.to_i + 1)
           after_build_new_version(new_version) if respond_to?(:after_build_new_version)
@@ -148,7 +194,7 @@ module Cms
         end
 
         def publish_if_needed
-          logger.debug { "#{self.class}#publish_if_needed. publish? = '#{!!@publish_on_save}'"}
+          #logger.debug { "#{self.class}#publish_if_needed. publish? = '#{!!@publish_on_save}'" }
 
           if @publish_on_save
             publish
@@ -181,21 +227,21 @@ module Cms
         # 2. If its an update, a new version is created and that is saved.
         # 3. If new record, its version is set to 1, and its published if needed.
         def create_or_update
-          logger.debug {"#{self.class}#create_or_update called. Published = #{!!publish_on_save}"}
+          logger.debug { "#{self.class}#create_or_update called. Published = #{!!publish_on_save}" }
           self.skip_callbacks = false
           unless different_from_last_draft?
-            logger.debug {"No difference between this version and last. Skipping save"}
+            logger.debug { "No difference between this version and last. Skipping save" }
             self.skip_callbacks = true
             return true
           end
-          logger.debug {"Saving #{self.class} #{self.attributes}"}
+          logger.debug { "Saving #{self.class} #{self.attributes}" }
           if new_record?
             self.version = 1
             # This should call ActiveRecord::Callbacks#create_or_update, which will correctly trigger the :save callback_chain
             saved_correctly = super
             changed_attributes.clear
           else
-            logger.debug {"#{self.class}#update"}
+            logger.debug { "#{self.class}#update" }
             # Because we are 'skipping' the normal ActiveRecord update here, we must manually call the save callback chain.
             run_callbacks :save do
               saved_correctly = @new_version.save
@@ -211,85 +257,11 @@ module Cms
         # Called explicitly during update, where it will just define the new_version to be saved.
         def build_new_version
           @new_version = build_new_version_and_add_to_versions_list_for_saving
-          logger.debug {"New version of #{self.class}::Version is #{@new_version.attributes}"}
+          logger.debug { "New version of #{self.class}::Version is #{@new_version.attributes}" }
         end
 
-        # Implementation from BrowserCMS 3.1 (Rails 2 API). Left for reference while tests are being fixed for Rails 3 upgrade.
-        #
-        #
-        # This overrides the 'save' method from activerecord
-        # Things happening here:
-        # 1. If the record is unchanged, no save is performed, but true is returned (Make a separete call back)
-        # 2. If its an update, a new version is created and that is saved.
-        # 3. If new record, its version is set to 1, and its published if needed.
-        #
-        # Note: According to AR::Callbacks, save is its own transactions, so should be no need for separate TX.
-#        def save(perform_validations=true)
-#          transaction do
-#            #logger.info "..... Calling valid?"
-#            return false unless !perform_validations || valid?
-#
-#            if different_from_last_draft?
-#              #logger.info "..... Changes => #{changes.inspect}"
-#            else
-#              #logger.info "..... No Changes"
-#              return true
-#            end
-#
-#            #logger.info "..... Calling before_save"
-#            return false if callback(:before_save) == false
-#
-#            if new_record?
-#              #logger.info "..... Calling before_create"
-#              return false if callback(:before_create) == false
-#            else
-#              #logger.info "..... Calling before_update"
-#              return false if callback(:before_update) == false
-#            end
-#
-#            #logger.info "..... Calling build_new_version"
-#            new_version = build_new_version
-#            #logger.info "..... Is new version valid? #{new_version.valid?}"
-#            if new_record?
-#              self.version = 1
-#              #logger.info "..... Calling create_without_callbacks"
-#              if result = create_without_callbacks
-#                #logger.info "..... Calling after_create"
-#                if callback(:after_create) != false
-#                  #logger.info "..... Calling after_save"
-#                  callback(:after_save)
-#                end
-#
-#                if @publish_on_save
-#                  publish
-#                  @publish_on_save = nil
-#                end
-#                changed_attributes.clear
-#              end
-#              result
-#            elsif new_version
-#              #logger.info "..... Calling save"
-#              if result = new_version.save
-#                #logger.info "..... Calling after_save"
-#                if callback(:after_update) != false
-#                  #logger.info "..... Calling after_update"
-#                  callback(:after_save)
-#                end
-#
-#                if @publish_on_save
-#                  publish
-#                  @publish_on_save = nil
-#                end
-#                changed_attributes.clear
-#              end
-#              result
-#            end
-#            true
-#          end
-#        end
-
         def save!(perform_validations=true)
-          save(:validate=>perform_validations) || raise(ActiveRecord::RecordNotSaved.new(errors.full_messages))
+          save(:validate => perform_validations) || raise(ActiveRecord::RecordNotSaved.new(errors.full_messages))
         end
 
         def draft
@@ -317,7 +289,7 @@ module Cms
         end
 
         def as_of_draft_version
-          build_object_from_version(draft)
+          draft.build_object_from_version
         end
 
         # Find a Content Block as of a specific version.
@@ -327,7 +299,7 @@ module Cms
         def as_of_version(version)
           v = find_version(version)
           raise ActiveRecord::RecordNotFound.new("version #{version.inspect} does not exist for <#{self.class}:#{id}>") unless v
-          build_object_from_version(v)
+          v.build_object_from_version
         end
 
         def revert
@@ -335,19 +307,30 @@ module Cms
           revert_to(draft_version - 1) unless draft_version == 1
         end
 
-        def revert_to_without_save(version)
+        def revert_to_without_save(version, options)
           raise "Version parameter missing" if version.blank?
-          self.revert_to_version = find_version(version)
+          revert_to_version = find_version(version)
           raise "Could not find version #{version}" unless revert_to_version
+          self.before_revert(revert_to_version) if self.respond_to?(:before_revert)
+
           (self.class.versioned_columns - ["version"]).each do |a|
             send("#{a}=", revert_to_version.send(a))
           end
+
+
+          options.keys.each do |key|
+            send("#{key}=", options[key])
+          end
+
+          self.after_revert(revert_to_version) if self.respond_to?(:after_revert)
           self.version_comment = "Reverted to version #{version}"
           self
         end
 
-        def revert_to(version)
-          revert_to_without_save(version)
+        # @param [Integer] version To revert to
+        # @param [Hash] options Values to set prior to saving the updated record.
+        def revert_to(version, options={})
+          revert_to_without_save(version, options)
           save
         end
 
@@ -367,37 +350,7 @@ module Cms
           (self.class.versioned_columns - %w(  version  )).each do |col|
             return true if self.send(col) != last_draft.send(col)
           end
-          return false
-        end
-
-        private
-
-        # Given a ::Version object of a given type, create an original object from its attributes.
-        #
-        # @param [Class#name::Version] version_of_object (i.e. HtmlBlock::Version)
-        # @return [Class#name] i.e. HtmlBlock
-        def build_object_from_version(version_of_object)
-          obj = self.class.new
-
-          (self.class.versioned_columns + [:version, :created_at, :created_by_id, :updated_at, :updated_by_id]).each do |a|
-            obj.send("#{a}=", version_of_object.send(a))
-          end
-          obj.id = id
-          obj.lock_version = lock_version
-
-          # Need to do this so associations can be loaded
-          obj.instance_variable_set("@persisted", true)
-          obj.instance_variable_set("@new_record", false)
-
-          # Callback to allow us to load other data when an older version is loaded
-          obj.after_as_of_version if obj.respond_to?(:after_as_of_version)
-
-          # Last but not least, clear the changed attributes
-          if changed_attrs = obj.send(:changed_attributes)
-            changed_attrs.clear
-          end
-
-          obj
+          false
         end
       end
     end

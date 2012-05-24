@@ -2,8 +2,7 @@ Feature: Manage Html Blocks
   As a content editor I should be able to add new HTML content to a site
 
   Background:
-    Given the cms database is populated
-    And I am logged in as a Content Editor
+    Given I am logged in as a Content Editor
 
   Scenario: List Html Blocks
     Given the following Html blocks exist:
@@ -44,5 +43,11 @@ Feature: Manage Html Blocks
     Then the response should be 200
     And the page header should be "View Text"
     And I should see "Used on: 1 page"
-    
+
+  Scenario: Multiple Pages
+    Given there are multiple pages of html blocks in the Content Library
+    When I request /cms/html_blocks
+    Then I should see the paging controls
+    And I click on "next_page_link"
+    Then I should see the second page of content
   

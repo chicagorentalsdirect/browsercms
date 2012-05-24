@@ -23,6 +23,7 @@ ActiveRecord::Base.connection.instance_eval do
 end
 
 class SearchableContentBlockParent < ActiveRecord::Base
+  attr_accessible :name
   has_many :children, :class_name => "SearchableContentBlock", :foreign_key => "parent_id" 
 end
 
@@ -42,18 +43,18 @@ class SearchableContentBlockTest < ActiveSupport::TestCase
 
     assert SearchableContentBlock.searchable?
     assert_equal [@a1, @a2], SearchableContentBlock.search("a").all
-    assert_equal [@a2, @a1], SearchableContentBlock.search(:term => "a", :order => "id desc").all
-    assert_equal [@a2, @a1], SearchableContentBlock.created_after(1.hour.ago).search(:term => "a", :order => "id desc").all
-    assert_equal [@a2, @a1], @parent.children.created_after(1.hour.ago).search(:term => "a", :order => "id desc").all
+    assert_equal [@a2, @a1], SearchableContentBlock.search(:term => "a").order("id desc").all
+    assert_equal [@a2, @a1], SearchableContentBlock.created_after(1.hour.ago).search(:term => "a").order("id desc").all
+    assert_equal [@a2, @a1], @parent.children.created_after(1.hour.ago).search(:term => "a").order("id desc").all
   end
 end
 
 class SearchableHtmlBlockTest < ActiveSupport::TestCase
   def test_searchable
-    @a1 = Factory(:html_block, :name => "a1", :content => "a one")
-    @a2 = Factory(:html_block, :name => "a2", :content => "a two")
-    @b1 = Factory(:html_block, :name => "b1", :content => "b one")
-    @b2 = Factory(:html_block, :name => "b2", :content => "b two")
+    @a1 = create(:html_block, :name => "a1", :content => "a one")
+    @a2 = create(:html_block, :name => "a2", :content => "a two")
+    @b1 = create(:html_block, :name => "b1", :content => "b one")
+    @b2 = create(:html_block, :name => "b2", :content => "b two")
 
     assert Cms::HtmlBlock.searchable?
     assert_equal [@a2, @b2], Cms::HtmlBlock.search("2").all

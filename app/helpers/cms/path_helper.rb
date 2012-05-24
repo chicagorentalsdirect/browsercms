@@ -5,6 +5,30 @@ module Cms
   # From app, should be cms.xyz_path
   module PathHelper
 
+    # Returns the relative path to the given attachment.
+    # Content editors will see exact specific version path, while other users will see the 'public' url for the path.
+    def attachment_path_for(attachment)
+      return "" unless attachment
+      if cms_current_user.able_to?(:edit_content)
+        attachment.attachment_version_path
+      else
+        attachment.url
+      end
+    end
+
+    # Returns a path to sort a table of Content Blocks by a given parameter. Retains other relevant parameters (like search criteria).
+    #
+    # @param [Cms::ContentType] content_type
+    # @param [String] column_to_sort The name of the column to sort on.
+    def cms_sortable_column_path(content_type, column_to_sort)
+      filtered_params = params.clone
+      filtered_params.delete(:action)
+      filtered_params.delete(:controller)
+      filtered_params.merge!(:order => determine_order(filtered_params[:order], column_to_sort))
+      cms_connectable_path(content_type.model_class, filtered_params)
+    end
+
+    # @deprecated Use cms_connectable_path instead.
     def cms_index_path_for(resource, options={})
       polymorphic_path(build_path_for(resource), options)
     end
@@ -23,6 +47,10 @@ module Cms
       send("new_#{resource_collection_name(resource).underscore.gsub('/', '_')}_url", options)
     end
 
+    # @param [Class, String] connectable The model class (i.e. HtmlBlock) or plural collection name (html_blocks) to link to
+    # @param [Hash] options Passed to polymorphic_path
+    #
+    # @return [String] path suitable to give to link_to
     def cms_connectable_path(connectable, options={})
       if Portlet === connectable
         cms.portlet_path(connectable)
@@ -74,11 +102,9 @@ module Cms
 
     private
 
+
     def build_path_for(model_or_class_or_content_type)
-      path = []
-      path << engine_for(model_or_class_or_content_type)
-      path.concat path_elements_for(model_or_class_or_content_type)
-      path
+      Cms::EngineAwarePathBuilder.new(model_or_class_or_content_type).build(self)
     end
 
     # Returns the name of the collection that this resource belongs to

@@ -27,7 +27,7 @@ Rake::TestTask.new('test:units' => 'app:test:prepare') do |t|
   t.verbose = false
 end
 
-Rake::TestTask.new('test:functionals') do |t|
+Rake::TestTask.new('test:functionals' => 'app:test:prepare') do |t|
   t.libs << 'lib'
   t.libs << 'test'
   t.pattern = 'test/functional/**/*_test.rb'
@@ -48,6 +48,18 @@ require 'cucumber/rake/task'
 Cucumber::Rake::Task.new(:features) do |t|
   t.cucumber_opts = "features --format progress"
 end
+
+Cucumber::Rake::Task.new('features:fast') do |t|
+  t.cucumber_opts = "features --format progress --tags ~@cli"
+end
+
+Cucumber::Rake::Task.new('features:cli') do |t|
+  t.cucumber_opts = "features --format progress --tags @cli"
+end
+
+
+desc "Run everything but the command line (slow) tests"
+task 'test:fast' => %w{test:units test:functionals test:integration features:fast}
 
 desc 'Runs all the tests'
 task :test => 'app:test:prepare' do
@@ -74,6 +86,11 @@ YARD::Rake::YardocTask.new do |t|
   t.options = ['--output-dir', 'doc/api/']
 end
 
+# Load all tasks files
+#Dir.glob('lib/tasks/*.rake').each { |r| import r }
+
+# Load just this one task file instead (the previous rake files can probably be simplified)
+import 'lib/tasks/core_tasks.rake'
 
 begin
   require 'cucumber/rake/task'
@@ -85,13 +102,3 @@ begin
     end
   end
 end
-
-load 'lib/tasks/core_tasks.rake'
-# Sample tasks to load sample data. This is unworking pseudocode at the moment.
-#task 'db:load' do
-  # `mysql --user=root --password name_of_database < test/dummy/db/backups/name_of_file.sql`
-#end
-
-#task 'db:dump' do
-  # `mysqldump --user=name_of_user --password --database name_of_database > name_of_file.sql`
-#end

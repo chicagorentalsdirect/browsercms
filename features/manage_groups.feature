@@ -2,8 +2,7 @@ Feature: Manage Groups
   CMS Admins should be able to create and manage groups and their permissions through the UI.
 
   Background:
-    Given the cms database is populated
-    And I am logged in as a Content Editor
+    Given I am logged in as a Content Editor
 
   Scenario: Create a new content editor group
     Given I request /cms/groups
@@ -31,3 +30,10 @@ Feature: Manage Groups
     Then I should see "Authenticated Users"
     Then I click on "Authenticated Users"
     And the new group should have neither edit nor publish permissions
+
+  Scenario: Multiple Pages of Groups
+    Given there are 20 groups
+    When I am at /cms/groups
+    Then I should see "Displaying 1 - 15 of 20"
+    When I click on "next_page_link"
+    Then I should see "Displaying 16 - 20 of 20"
