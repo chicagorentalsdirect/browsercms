@@ -9,7 +9,7 @@ module Cms
     # Content editors will see exact specific version path, while other users will see the 'public' url for the path.
     def attachment_path_for(attachment)
       return "" unless attachment
-      if current_user.able_to?(:edit_content)
+      if cms_current_user.able_to?(:edit_content)
         attachment.attachment_version_path
       else
         attachment.url
