@@ -1,10 +1,10 @@
 Feature: Content Pages
   Visitors should be able to see content pages
 
-  # This should be ported from test/functional/content_controller_test.rbover time.
+# This should be ported from test/functional/content_controller_test.rb over time.
 
   Background:
-    Given the cms database is populated
+    Given I am a guest
 
   Scenario: Page Not Found as Guest
     Given I request /a/non-existent/page
@@ -19,3 +19,36 @@ Feature: Content Pages
     Given a protected page at "/protected-page" exists
     When I request /protected-page
     Then I should see the CMS :forbidden page
+
+  Scenario: View Older Versions
+    Given a page exists with two versions
+    And I am logged in as a Content Editor
+    When I view the toolbar for version 1 of that page
+    Then the toolbar should display a revert to button
+
+  @page-caching
+  Scenario: A Guest tries to access a CMS page in production
+    Given a page at "/about-us" exists
+    When a guest visits "http://cms.mysite.com/about-us"
+    Then they should be redirected to "http://mysite.com/about-us"
+    And the response should be 200
+
+  @page-caching
+  Scenario: A registered user tries to access a CMS page in production
+    Given a page at "/about-us" exists
+    When a registered user visits "http://cms.mysite.com/about-us"
+    Then they should be redirected to "http://mysite.com/about-us"
+    And the response should be 200
+
+  @page-caching
+  Scenario: Guest accesses a CMS action on the public domain
+    When I visit "http://www.mysite.com/cms/dashboard"
+    Then they should be redirected to "http://cms.mysite.com/cms/login"
+    And the response should be 200
+
+  @page-caching
+  Scenario: Editor accesses the 'home' controller
+    Given I am logged in as a Content Editor on the admin subdomain
+    When I visit "http://mysite.com/cms"
+    Then they should be redirected to "http://cms.mysite.com/"
+    And the response should be 200

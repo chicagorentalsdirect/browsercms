@@ -1,3 +1,122 @@
+v3.5.0.rc3
+==========
+
+* Add new migration methods to make it easier for modules to namespace their blocks.
+* Allow modules to add new links to the Admin tab without overriding views. 
+
+In an engine, you can do the following:
+
+```
+# In lib/bcms_your_module/engine.rb
+initializer 'bcms_your_module.add_menu_item' do |app|
+  app.config.cms.tools_menu << {:menu_section => 'widgets', 
+								:name => 'List of Widgets', 
+								:engine=>'bcms_your_module', 
+								:route_name => 'widgets_path'
+							}
+end
+
+# In app/controllers/bcms_your_module/widget_controller.rb
+class BcmsYourModule::WidgetsController < Cms::BaseController
+
+  layout 'cms/administration'
+  check_permissions :administrate
+  
+  def index
+	@menu_section = 'widgets'
+	# Do something interesting
+  end
+end
+
+# In config/routes.rb
+BcmsYourModule::Engine.routes.draw do
+  get '/widgets' => 'widgets#index', :as =>:widgets
+end
+```
+
+
+
+v3.5.0.rc2
+==========
+
+* Fixed issue where named page routes couldn't be found in portlet views
+* Fixed issue where page routes can't be created in seed data.
+* Confirmed that X-Sendfile works
+
+X-Sendfile
+----------
+
+One way to improve the performance of BrowserCMS is to enable X-Sendfile. Used in conjunction with Web servers like Apache and Nginx, X-Sendfile will allow web servers to handle serving files that have been uploaded into the CMS. Web servers are very well optimized for sending static files, and doing so takes load off the Ruby processes reducing bottlenecks.
+
+To enable X-Sendfile in your application, uncomment one of the following two lines depending on which web server you are using.
+
+```
+# In config/environments/production.rb
+config.action_dispatch.x_sendfile_header = "X-Sendfile" # for apache
+config.action_dispatch.x_sendfile_header = 'X-Accel-Redirect' # for nginx
+```
+
+You will then need to configure your web server to handle X-Sendfile requests. See documentation for [Apache](https://tn123.org/mod_xsendfile/) and [Nginx](http://wiki.nginx.org/XSendfile) for details.
+
+v3.5.0.rc1
+======
+
+This release includes a number of new features, including:
+
+* Improved Attachments
+* Mobile Friendly templates
+* Rail 3.2 compatibility
+* Improved Heroku support
+
+See the upgrade instructions here for existing projects: https://github.com/browsermedia/browsercms/wiki/Upgrading-to-3.5.x-from-3.4.x
+
+Improved Attachments
+--------------------
+
+Attachments have been completely reworked to use Paperclip (https://github.com/thoughtbot/paperclip).
+
+* Each block can now have multiple attachments using different styles.
+* Attachments can be defined as one to one (has_attachment :image) or be stored as a collection (has_many_attachments :photos).
+* Upgrade migrations are provide to migrate file and data for older projects to the new attachment structure.
+* New generators have been provided to create content blocks with the new attachment styles.
+
+See this Attachments API guide for more details: https://github.com/browsermedia/browsercms/wiki/Attachments-API
+
+Mobile
+------
+
+The CMS can now be configured to serve mobile optimized content, using a mobile subdomain and smart redirecting based on User Agents.
+
+* Mobile Templates: Each template can have a 'mobile' version, which will be used when users request a mobile version of that page.
+* Fallback Templates: Any page which lacks a mobile ready template will use the 'full' desktop template when displayed as mobile.
+* Mobile Subdomain:  Any requests to the mobile subdomain automatically serve mobile pages. m. is the assumed subdomain.
+* Agent Redirection: Users on mobile devices can be automatically redirected to the mobile subdomain. (Handled via Apache User Agent detection.)
+* Mobile Site Opt Out: Users on mobile device can opt to be redirected to the desktop site if they want. (Handled via a cookie)
+* Mobile caching: The mobile and full sites have their own separate page cache, mean both can be served quickly by Apache.
+* View as Mobile: Editors can preview the mobile templates while editing pages in the admin, if a page has a mobile template. Once in 'mobile' mode, all pages should be viewed as mobile until they disable it.
+
+These features are originally from the bcms_mobile module, which has been inlined into the CMS core. See the [Mobile Setup Guide](https://github.com/browsermedia/browsercms/wiki/Setting-up-mobile-sites) for more information.
+
+Improved Heroku Support
+-----------------------
+
+To better support deploying BrowserCMS to Heroku, we have put together a new guide: https://github.com/browsermedia/browsercms/wiki/Deploying-to-Heroku which covers what steps are required, as well as some considerations. For example, using Heroku requires storing files on an external service, so we refactored the core CMS and worked on a new Amazon S3 module (bcms_aws_s3) that will integrate with it.
+
+As a side note, the CMS should work with Postgresql as well, based on our testing with Heroku (which uses Postgres by default).
+
+Notable Fixes
+-------------
+
+* [#493] Add Mobile capability
+* [#494] Speed up Cucumber Scenarios
+* [#492] Upgrade to be Rails 3.2.x compatible
+* [#509] Pagination works for custom blocks now
+* [#508] Remove fancy file upload (probably unused and wasn't working anyway)
+* [#519] Better support for Amazon/AWS S3
+* [#521] Remove SITE_DOMAIN constant in favor of more conventional rails configuration methods
+
+See the [detailed changelog](https://github.com/browsermedia/browsercms/compare/v3.4.0...v3.5.0.rc1) for more info.
+
 v3.4.2
 ======
 
@@ -7,6 +126,13 @@ Maintenance Release
 * [#491] Fix issue where custom blocks couldn't be viewed in page edit mode
 * [#470] Fix issue where loading throws errors on some OS's (Ubuntu)
 
+
+v3.4.1
+======
+
+Maintenance Release
+
+* [#490] Fix issue where Javascript errors occured when in Page edit mode
 
 v3.4.0
 ======
@@ -62,6 +188,14 @@ Other Notable Fixes
 * [#487] CKEditor Gem - Replace the built in CKeditor gem with the Asset pipeline aware ckeditor_rails gem.
 
 See the [detailed changelog](https://github.com/browsermedia/browsercms/compare/v3.3.3...v3.4.0) for a complete list of changes, as well as the [Closed Tickets for 3.4.0](https://github.com/browsermedia/browsercms/issues?milestone=1&state=closed) for a complete list of closed items.
+
+v3.3.4
+======
+
+Maintenance release
+
+* [#503] - Searching and sort content blocks works
+* [#472] - Sorting content blocks works
 
 v3.3.3
 ======

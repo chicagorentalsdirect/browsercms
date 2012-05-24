@@ -22,7 +22,8 @@ module Cms
           include InstanceMethods
         
           attr_accessor :publish_on_save
-        
+          attr_accessible :publish_on_save
+
           after_save :publish_for_non_versioned
         
           scope :published, :conditions => {:published => true}
@@ -71,13 +72,18 @@ module Cms
         # Force the publishing of this block.
         #
         # Warning: The behavior of calling the following on an existing block:
-        #   block.save_on_publish
+        #   block.save_on_publish = true
         #   block.save!
         #
         # Is different than calling:
         #   block.publish!
         #
-        # And it probably shouldn't be. Try to merge the 'else' with the 'Versioning#create_or_update' method to eliminate duplication 
+        # And it probably shouldn't be. Try to merge the 'else' with the 'Versioning#create_or_update' method to eliminate duplication.
+        #
+        # In addition, after_publish is NOT called if you do:
+        #   block.save_on_publish = true
+        #   block.save!
+        # which will cause problems if blocks are updated via the method (like with the UI)
         def publish!
           if new_record?
             self.publish_on_save = true

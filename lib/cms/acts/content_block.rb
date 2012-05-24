@@ -11,13 +11,20 @@ module Cms
         # Adds Content Block behavior to this class
         #
         # @param [Hash] options
+        # @option options [Boolean] :allow_attachments (true) Determines whether this content block can be marked as having attachments.
         def acts_as_content_block(options={})
           defaults = {
-            # Set default values here.
+              # Set default values here.
+              :allow_attachments => true
           }
           options = defaults.merge(options)
 
-          belongs_to_attachment(options[:belongs_to_attachment].is_a?(Hash) ? options[:belongs_to_attachment] : {}) if options[:belongs_to_attachment]
+          if options[:belongs_to_attachment].present?
+            raise ArgumentError.new ":belongs_to_attachment option is no longer supported. Please use :has_attachments option"
+          end
+
+          include Cms::DefaultAccessible
+          allow_attachments if options[:allow_attachments]
           is_archivable(options[:archiveable].is_a?(Hash) ? options[:archiveable] : {}) unless options[:archiveable] == false
           is_connectable(options[:connectable].is_a?(Hash) ? options[:connectable] : {}) unless options[:connectable] == false
           flush_cache_on_change(options[:flush_cache_on_change].is_a?(Hash) ? options[:flush_cache_on_change] : {}) unless options[:flush_cache_on_change] == false
@@ -30,6 +37,7 @@ module Cms
           is_versioned(options[:versioned].is_a?(Hash) ? options[:versioned] : {}) unless options[:versioned] == false
 
           include InstanceMethods
+          extend Cms::Behaviors::Naming
         end
 
         module InstanceMethods

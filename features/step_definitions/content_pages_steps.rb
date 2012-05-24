@@ -19,8 +19,13 @@ When /^I am not logged in$/ do
   visit '/cms/logout'
 end
 
-Given /^I am logged in as a Content Editor$/ do
-  visit '/cms'
+Given /^I am logged in as a Content Editor(| on the admin subdomain)$/ do |is_admin|
+  if is_admin.blank?
+    login_at = '/cms/login'
+  else
+    login_at = 'http://cms.mysite.com/cms/login'
+  end
+  visit login_at
   fill_in 'login', :with => 'cmsadmin'
   fill_in 'password', :with => 'cmsadmin'
   click_button 'LOGIN'
@@ -99,7 +104,7 @@ Given /^there is a homepage$/ do
   if page
     @homepage = page
   else
-    @homepage = Factory(:public_page, :path => "/", :name => "Home Page")
+    @homepage = create(:public_page, :path => "/", :name => "Home Page")
   end
 end
 
@@ -107,23 +112,27 @@ Then /^I should see the CMS 404 page$/ do
   should_see_cms_404_page
 end
 
+Given /^a page at "([^"]*)" exists$/ do |path|
+  page = create(:public_page, :path => path)
+end
+
 Given /^an archived page at "([^"]*)" exists$/ do |path|
-  page = Factory(:page, :archived => true, :path => path)
+  page = create(:page, :archived => true, :path => path)
   assert page.archived?
 end
 
 module ProtectedContentSteps
   def create_protected_user_section_group
-    @protected_section = Factory(:section, :parent => root_section)
-    @secret_group = Factory(:group, :name => "Secret")
+    @protected_section = create(:section, :parent => root_section)
+    @secret_group = create(:group, :name => "Secret")
     @secret_group.sections << @protected_section
-    @privileged_user = Factory(:user, :login => "privileged")
+    @privileged_user = create(:user, :login => "privileged")
     @privileged_user.groups << @secret_group
   end
 
   def create_protected_page(path="/secret")
     create_protected_user_section_group
-    @page = Factory(:page,
+    @page = create(:page,
                     :section => @protected_section,
                     :path => path,
                     :name => "Shhh... It's a Secret",
@@ -160,11 +169,41 @@ Given /^the following link exists:$/ do |table|
   table.hashes.each do |row|
     section = Cms::Section.with_path(row.delete('section')).first
     row['section_id'] = section.id
-    Factory(:link, row)
+    create(:link, row)
   end
 end
 
 When /^I change the link name to "([^"]*)"$/ do |new_name|
   fill_in "Name", :with=>new_name
   click_on "Save And Publish"
+end
+
+When /^(?:a guest|I) visits* "([^"]*)"$/ do |url|
+  visit url
+end
+
+When /^a registered user visits "([^"]*)"$/ do |url|
+  registered_user = create(:registered_user)
+  login_as(registered_user.login, registered_user.password)
+  visit url
+end
+
+
+Then /^they should be redirected to "([^"]*)"$/ do |expected_url|
+  assert_equal expected_url, current_url
+end
+
+
+Given /^a page exists with two versions$/ do
+  @content_page = create(:public_page)
+  @content_page.update_attributes(:name => "Version 2")
+end
+
+When /^I view the toolbar for version (\d+) of that page$/ do |version|
+  visit "/cms/toolbar?page_id=#{@content_page.id}&page_toolbar=1&page_version=#{version}"
+end
+
+Then /^the toolbar should display a revert to button$/ do
+  assert_equal 200, page.status_code
+  assert page.has_content? "Revert to this Version"
 end

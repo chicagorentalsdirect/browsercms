@@ -1,11 +1,41 @@
-
 module FactoryHelpers
+
+  def new_attachment(name="spreadsheet", path=nil)
+    {"0" => {
+        :data => mock_file,
+        :section_id => root_section,
+        :data_file_path => path,
+        :attachment_name => name}}
+  end
+
+  # Nested Attributes are pretty messy to build directly in code, and FactoryGirl isn't really appropriate since we need to
+  #  test mass assignment.
+  # Create a single Attachment with some default values.
+  #
+  # @param options
+  # @options :path [String]
+  # @options :name [String]
+  def attachments_hash(options={})
+    defaults = {
+        :attachment_name => "file",
+        :path => ""
+    }
+    defaults.merge!(options)
+    {:attachments_attributes =>
+         {"0" => {
+             :data => mock_file,
+             :section_id => root_section,
+             :data_file_path => defaults[:path],
+             :attachment_name => defaults[:name]}}
+    }
+  end
+
 
   def find_or_create_root_section
     root = Cms::Section.root.first
     unless root
       # This constructor matches how seed data is set up.
-      root = Factory(:root_section)
+      root = FactoryGirl.create(:root_section)
     end
     root
   end
@@ -31,11 +61,20 @@ module FactoryHelpers
     end
     guest_group
   end
+
   alias :given_a_guest_group_exists :given_there_is_a_guest_group
 
   # Creates a sample uploaded JPG file with binary data.
   def mock_file(options = {})
     file_upload_object({:original_filename => "foo.jpg", :content_type => "image/jpeg"}.merge(options))
+  end
+
+  def mock_text_file(options = {})
+    file_upload_object({:original_filename => "sample_upload.txt", :content_type => "text/plain"}.merge(options))
+  end
+
+  def create_or_find_permission_named(name)
+    Cms::Permission.named(name).first || FactoryGirl.create(:permission, :name => name)
   end
 
   # Creates a TempFile attached to an uploaded file. Used to test attachments
@@ -44,11 +83,11 @@ module FactoryHelpers
   end
 
   def given_there_is_a_content_type(model_class)
-    Factory(:content_type, :name => model_class.to_s)
+    FactoryGirl.create(:content_type, :name => model_class.to_s)
   end
 
   def create_admin_user(attrs={})
-    Factory(:cms_admin, {:login => "cmsadmin"}.merge(attrs))
+    FactoryGirl.create(:cms_admin, {:login => "cmsadmin"}.merge(attrs))
   end
 
   def given_there_is_a_cmsadmin

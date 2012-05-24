@@ -87,9 +87,9 @@ When /^I cd into the project "([^"]*)"$/ do |project|
   self.project_name = project
 end
 
-When /^a migration named "([^"]*)" should contain:$/ do |file, partial_content|
+When /^a migration named "([^"]*)" (#{SHOULD_OR_NOT}) contain:$/ do |file, should_or_not, partial_content|
   migration = find_migration_with_name(file)
-  check_file_content(migration, partial_content, true)
+  check_file_content(migration, partial_content, should_or_not)
 end
 
 # A table of string values to check
@@ -101,7 +101,7 @@ When /^a migration named "([^"]*)" should contain the following:$/ do |file, tab
 end
 
 Then /^it should seed the BrowserCMS database$/ do
-  assert_partial_output "YOUR CMS username/password is: cmsadmin/cmsadmin", all_output
+  assert_matching_output "YOUR CMS username/password is: cmsadmin/cmsadmin", all_output
 end
 
 When /^it should seed the demo data$/ do
@@ -109,8 +109,8 @@ When /^it should seed the demo data$/ do
   # This output is ugly, but it verifies that seed data completely runs
 end
 
-When /^the file "([^"]*)" should contain:$/ do |file, partial_content|
-  check_file_content(file, partial_content, true)
+When /^the file "([^"]*)" (#{SHOULD_OR_NOT}) contain:$/ do |file, should_or_not, partial_content|
+  check_file_content(file, partial_content, should_or_not)
 end
 
 When /^the correct version of Rails should be added to the Gemfile$/ do
@@ -126,28 +126,30 @@ Then /^Gemfile should have the correct version of BrowserCMS$/ do
 end
 
 When /^the production environment should be configured with reasonable defaults$/ do
-  check_file_content "#{project_name}/config/environments/production.rb", "config.assets.compile = true", true
+  production_rb = "#{project_name}/config/environments/production.rb"
+  check_file_content production_rb, "config.assets.compile = true", true
+  check_file_content production_rb, %!# config.cms.site_domain = "www.example.com"!, true
 end
 
 When /^it should comment out Rails in the Gemfile$/ do
-  check_file_content("Gemfile", "# gem 'rails', '3.1.3'", true)
+  check_file_content("Gemfile", "# gem 'rails', '#{Rails::VERSION::STRING}'", true)
 end
 
 When /^it should run bundle install$/ do
-  assert_partial_output "Your bundle is complete!", all_output
+  assert_partial_output "Your bundle is", all_output
 end
 
 When /^it should copy all the migrations into the project$/ do
-  expected_outputs = %w{
-    rake  cms:install:migrations
-    Copied migration
-    browsercms300.rb from cms
-    browsercms305.rb from cms
-    browsercms330.rb from cms
-    browsercms340.rb from cms
-  }
+  expected_outputs = [
+      "rake  cms:install:migrations",
+      "Copied migration",
+      "browsercms300.cms.rb from cms",
+      "browsercms305.cms.rb from cms",
+      "browsercms330.cms.rb from cms",
+      "browsercms340.cms.rb from cms"
+  ]
   expected_outputs.each do |expect|
-    assert_partial_output expect, all_output
+    assert_matching_output expect, all_output
   end
 end
 
@@ -157,10 +159,9 @@ When /^it should add the seed data to the project$/ do
 end
 
 When /^it should display instructions to the user$/ do
-  expected = %w{
-      Next Steps:
-      Review https://github.com/browsermedia/browsercms/wiki/Upgrading-to-3.4.x-from-3.3.x
-    }
+  expected = [
+      "Next Steps:",
+   ]
   expected.each do |expect|
     assert_partial_output expect, all_output
   end
@@ -200,13 +201,32 @@ When /^the project has a "([^"]*)" model$/ do |model_name|
   run "rails g model #{model_name}"
 end
 
-Then /^the migration (should|should not) update the version table for "([^"]*)" block$/ do |should, block|
+Then /^the migration (#{SHOULD_OR_NOT}) update the version table for "([^"]*)" block$/ do |should, block|
   did_migration = %!rename_column("#{block}_versions", "#{block}_id", :original_record_id)!
 
   assert_partial_output "UpdateVersionIdColumns: migrated", all_output
-  if should == "should"
+  if should
     assert_partial_output did_migration, all_output
   else
     assert_no_partial_output did_migration, all_output
   end
+end
+
+Then /^it should display the current version of BrowserCMS$/ do
+  assert_partial_output "BrowserCMS #{Cms::VERSION}", all_output
+end
+
+When /^rails script be configured to work with engines$/ do
+  check_file_content "script/rails", "ENGINE_PATH = ", true
+end
+
+# Note: We skip running `rake rails:update` as part of these tests since it requires an interactive
+# command as part a separate process to overwrite files, so its very hard to wait for the exact timing.
+When /^I run the bcms update script$/ do
+  run_simple('bcms upgrade --skip-rails --skip-bundle', false)
+end
+
+# This will be slower since bundler needs to run.
+When /^I run the bcms update script with bundler$/ do
+  run_simple('bcms upgrade --skip-rails', false)
 end

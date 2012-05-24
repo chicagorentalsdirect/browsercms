@@ -2,8 +2,7 @@ Feature: Manage Users
   CMS Admins should be able to add/edit/disable users via the Admin UI.
 
   Background:
-    Given the cms database is populated
-    And I am logged in as a Content Editor
+    Given I am logged in as a Content Editor
 
   Scenario: Add User
     Given I request /cms/users
@@ -13,7 +12,6 @@ Feature: Manage Users
     Then I should see a page titled "User Browser"
     And I should see the following content:
       | testuser |
-
 
   Scenario: Change Password
     Given the following content editor exists:
@@ -30,6 +28,13 @@ Feature: Manage Users
       | login    | password  |
       | testuser | different |
     Then I should see a page titled "Home"
+
+  Scenario: Multiple Pages of Users
+    Given there are 20 users
+    When I am at /cms/users
+    Then I should see "Displaying 1 - 10 of 20"
+    When I click on "next_page_link"
+    Then I should see "Displaying 11 - 20 of 20"
 
 
 

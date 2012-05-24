@@ -3,8 +3,7 @@ Feature: Manage Content Blocks
   This blocks will be generated as Rails resources, with a controller and views.
 
   Background:
-    Given the cms database is populated
-    And a Content Type named "Product" is registered
+    Given a Content Type named "Product" is registered
     And I am logged in as a Content Editor
 
   Scenario: List Content Blocks
@@ -56,6 +55,20 @@ Feature: Manage Content Blocks
     Then the response should be 200
     And the page header should be "View Product 'iPhone'"
     And I should see "Used on: 1 page"
+
+  Scenario: Multiple Pages
+    Given there are multiple pages of products in the Content Library
+    When I request /cms/products
+    Then I should see the paging controls
+    And I click on "next_page_link"
+    Then I should see the second page of content
+
+  Scenario: Custom Page Routes
+    Given there is a page route for viewing a product
+    And I am a guest
+    When I view a page that lists products
+    Then I should be able to click on a link to see a product
+
 
 
 

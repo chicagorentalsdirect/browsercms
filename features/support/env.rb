@@ -4,7 +4,11 @@ require File.expand_path("../../../test/dummy/config/environment.rb", __FILE__)
 ENV["RAILS_ROOT"] ||= File.dirname(__FILE__) + "../../../test/dummy"
 
 require 'factory_girl'
-require File.join(File.dirname(__FILE__), '../../test/factories')
+require 'factory_girl/step_definitions'
+require File.join(File.dirname(__FILE__), '../../test/factories/factories')
+require File.join(File.dirname(__FILE__), '../../test/factories/attachable_factories')
+World(FactoryGirl::Syntax::Methods)
+
 require 'aruba/cucumber'
 
 Before do
@@ -60,14 +64,9 @@ rescue NameError
   raise "You need to add database_cleaner to your Gemfile (in the :test group) if you wish to use it."
 end
 
-# You may also want to configure DatabaseCleaner to use different strategies for certain features and scenarios.
-# See the DatabaseCleaner documentation for details. Example:
-#
-#   Before('@no-txn,@selenium,@culerity,@celerity,@javascript') do
-#     DatabaseCleaner.strategy = :truncation, {:except => %w[widgets]}
-#   end
-#
-#   Before('~@no-txn', '~@selenium', '~@culerity', '~@celerity', '~@javascript') do
-#     DatabaseCleaner.strategy = :transaction
-#   end
-#
+# Load the seed data once at the start of the test run.
+# By doing this here, and using transaction strategy, we ensure the fastest possible tests.
+DatabaseCleaner.clean_with :truncation
+silence_stream(STDOUT) do
+  require File.join(File.dirname(__FILE__), '../../db/seeds.rb')
+end
