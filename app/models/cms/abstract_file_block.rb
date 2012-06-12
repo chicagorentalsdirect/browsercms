@@ -7,7 +7,7 @@ module Cms
     validates_presence_of :name
 
     scope :by_section, lambda { |section| {
-        :include => {:attachment => :section_node},
+        :include => {:attachments => :section_node},
         :conditions => ["#{SectionNode.table_name}.ancestry = ?", section.node.ancestry_path]}
     }
 
@@ -15,6 +15,11 @@ module Cms
     # @return [Cms::Section]
     def parent
       file.parent
+    end
+
+    # Exists here so FileBrowser can polymorphically call file_size on Page, Images, Files, etc.
+    def file_size
+      file.size.round_bytes
     end
 
     def path

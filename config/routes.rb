@@ -46,7 +46,6 @@ Cms::Engine.routes.draw do
       put :complete
     end
   end
-  match '/sections/file_browser.xml', :to => 'sections#file_browser', :format => "xml", :as=>'file_browser'
   resources :sections do
     resources :links, :pages
   end
@@ -66,7 +65,7 @@ Cms::Engine.routes.draw do
   match '/content_library', :to=>'html_blocks#index', :as=>'content_library'
   content_blocks :html_blocks
   content_blocks :portlets
-  post '/portlet/:id/:handler', :to=>"portlet#execute_handler", :as=>"handler"
+  post '/portlet/:id/:handler', :to=>"portlet#execute_handler", :as=>"portlet_handler"
 
   content_blocks :file_blocks
   content_blocks :image_blocks

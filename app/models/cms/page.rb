@@ -17,6 +17,7 @@ class Cms::Page < ActiveRecord::Base
   has_many :tasks
 
   include Cms::DefaultAccessible
+  attr_accessible :name, :path, :template_file_name, :hidden, :cacheable # Needs to be explicit so seed data will work.
 
   scope :named, lambda { |name| {:conditions => ["#{table_name}.name = ?", name]} }
   scope :with_path, lambda { |path| {:conditions => ["#{table_name}.path = ?", path]} }
@@ -210,8 +211,9 @@ class Cms::Page < ActiveRecord::Base
     super(version)
   end
 
+  # Pages have no size (for the purposes of FCKEditor)
   def file_size
-    "?"
+    "NA"
   end
 
   def public?
